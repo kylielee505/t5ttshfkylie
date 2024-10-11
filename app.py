@@ -177,8 +177,6 @@ with gr.Blocks() as app:
     gr.Markdown("""
 # E2/F5 TTS
 
-> Zero-shot voice cloning, supporting English & Chinese
-
 This is an unofficial E2/F5 TTS demo. This demo supports the following TTS models:
 
 * [E2-TTS](https://arxiv.org/abs/2406.18009) (Embarrassingly Easy Fully Non-Autoregressive Zero-Shot TTS)
@@ -187,6 +185,8 @@ This is an unofficial E2/F5 TTS demo. This demo supports the following TTS model
 This demo is based on the [F5-TTS](https://github.com/SWivid/F5-TTS) codebase, which is based on an [unofficial E2-TTS implementation](https://github.com/lucidrains/e2-tts-pytorch).
 
 The checkpoints support English and Chinese.
+
+If you're having issues, try converting your reference audio to WAV or MP3, clipping it to 15s, and shortening your prompt. If you're still running into issues, please open a [community Discussion](https://huggingface.co/spaces/mrfakename/E2-F5-TTS/discussions).
 
 **NOTE: Reference text will be automatically transcribed with Whisper if not provided. For best results, keep your reference clips short (<15s). Ensure the audio is fully uploaded before generating.**
 """)
