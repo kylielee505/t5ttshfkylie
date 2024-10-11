@@ -203,6 +203,21 @@ If you're having issues, try converting your reference audio to WAV or MP3, clip
     spectrogram_output = gr.Image(label="Spectrogram")
 
     generate_btn.click(infer, inputs=[ref_audio_input, ref_text_input, gen_text_input, model_choice, remove_silence], outputs=[audio_output, spectrogram_output])
+    gr.Markdown("""
+## Run Locally
+
+Run this demo locally on CPU, CUDA, or MPS (Apple Silicon):
+
+First, ensure `ffmpeg` is installed.
+
+```bash
+git clone https://huggingface.co/spaces/mrfakename/E2-F5-TTS
+cd E2-F5-TTS
+python -m pip install -r requirements.txt
+python app_local.py
+```
+
+""")
     gr.Markdown("Unofficial demo by [mrfakename](https://x.com/realmrfakename)")
 
 
