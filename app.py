@@ -157,7 +157,7 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence):
     generated_wave = generated_wave.squeeze().cpu().numpy()
 
     if remove_silence:
-        gr.Info("Removing audio silences")
+        gr.Info("Removing audio silences... This may take a moment")
         non_silent_intervals = librosa.effects.split(generated_wave, top_db=30)
         non_silent_wave = np.array([])
         for interval in non_silent_intervals:
@@ -195,7 +195,7 @@ The checkpoints support English and Chinese.
     generate_btn = gr.Button("Synthesize", variant="primary")
     with gr.Accordion("Advanced Settings", open=False):
         ref_text_input = gr.Textbox(label="Reference Text", info="Leave blank to automatically transcribe the reference audio. If you enter text it will override automatic transcription.", lines=2)
-        remove_silence = gr.Checkbox(label="[EXPERIMENTAL] Remove Silences", info="The model tends to leave silences, we can manually remove silences if needed. This may produce strange results and is not guarenteed to work.")
+        remove_silence = gr.Checkbox(label="Remove Silences", info="The model tends to produce silences, especially on longer audio. We can manually remove silences if needed. Note that this is an experimental feature and may produce strange results. This will also increase generation time.", value=True)
     
     audio_output = gr.Audio(label="Synthesized Audio")
     spectrogram_output = gr.Image(label="Spectrogram")
