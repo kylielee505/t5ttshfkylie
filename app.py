@@ -177,6 +177,8 @@ with gr.Blocks() as app:
     gr.Markdown("""
 # E2/F5 TTS
 
+> Zero-shot voice cloning, supporting English & Chinese
+
 This is an unofficial E2/F5 TTS demo. This demo supports the following TTS models:
 
 * [E2-TTS](https://arxiv.org/abs/2406.18009) (Embarrassingly Easy Fully Non-Autoregressive Zero-Shot TTS)
