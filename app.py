@@ -188,7 +188,7 @@ The checkpoints support English and Chinese.
 
 If you're having issues, try converting your reference audio to WAV or MP3, clipping it to 15s, and shortening your prompt. If you're still running into issues, please open a [community Discussion](https://huggingface.co/spaces/mrfakename/E2-F5-TTS/discussions).
 
-Long-form/batched inference is coming soon!
+Long-form/batched inference + speech editing is coming soon!
 
 **NOTE: Reference text will be automatically transcribed with Whisper if not provided. For best results, keep your reference clips short (<15s). Ensure the audio is fully uploaded before generating.**
 """)
