@@ -208,7 +208,7 @@ Long-form/batched inference is coming soon!
     gr.Markdown("""
 ## Run Locally
 
-Run this demo locally on CPU, CUDA, or MPS (Apple Silicon):
+Run this demo locally on CPU, CUDA, or MPS/Apple Silicon (requires macOS >= 14):
 
 First, ensure `ffmpeg` is installed.
 
