@@ -20,8 +20,13 @@ from transformers import pipeline
 import spaces
 import librosa
 from txtsplit import txtsplit
+from detoxify import Detoxify
+
 
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
+
+model = Detoxify('original', device=device)
+
 
 pipe = pipeline(
     "automatic-speech-recognition",
@@ -80,6 +85,9 @@ E2TTS_ema_model, E2TTS_base_model = load_model("E2TTS_Base", UNetT, E2TTS_model_
 @spaces.GPU
 def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress = gr.Progress()):
     print(gen_text)
+    if model.predict(text)['toxicity'] > 0.8:
+        print("Flagged for toxicity:", gen_text)
+        raise gr.Error("Your text was flagged for toxicity, please try again with a different text.")
     gr.Info("Converting audio...")
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         aseg = AudioSegment.from_file(ref_audio_orig)
