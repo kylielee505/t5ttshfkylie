@@ -19,7 +19,6 @@ from model.utils import (
     save_spectrogram,
 )
 from transformers import pipeline
-import spaces
 import librosa
 from txtsplit import txtsplit
 
