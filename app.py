@@ -85,7 +85,7 @@ E2TTS_ema_model, E2TTS_base_model = load_model("E2TTS_Base", UNetT, E2TTS_model_
 @spaces.GPU
 def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress = gr.Progress()):
     print(gen_text)
-    if model.predict(text)['toxicity'] > 0.8:
+    if model.predict(gen_text)['toxicity'] > 0.8:
         print("Flagged for toxicity:", gen_text)
         raise gr.Error("Your text was flagged for toxicity, please try again with a different text.")
     gr.Info("Converting audio...")
