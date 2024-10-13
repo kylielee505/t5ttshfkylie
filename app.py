@@ -84,6 +84,8 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence):
     gr.Info("Converting audio...")
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         aseg = AudioSegment.from_file(ref_audio_orig)
+        # Convert to mono
+        aseg = aseg.set_channels(1)
         audio_duration = len(aseg)
         if audio_duration > 15000:
             gr.Warning("Audio is over 15s, clipping to only first 15s.")
