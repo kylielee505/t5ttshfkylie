@@ -80,8 +80,6 @@ E2TTS_ema_model, E2TTS_base_model = load_model("E2TTS_Base", UNetT, E2TTS_model_
 @spaces.GPU
 def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress = gr.Progress()):
     print(gen_text)
-    if len(gen_text) > 200:
-        raise gr.Error("Please keep your text under 200 chars.")
     gr.Info("Converting audio...")
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         aseg = AudioSegment.from_file(ref_audio_orig)
@@ -204,7 +202,7 @@ Long-form/batched inference + speech editing is coming soon!
 """)
 
     ref_audio_input = gr.Audio(label="Reference Audio", type="filepath")
-    gen_text_input = gr.Textbox(label="Text to Generate (max 200 chars.)", lines=4)
+    gen_text_input = gr.Textbox(label="Text to Generate (longer text will use chunking)", lines=4)
     model_choice = gr.Radio(choices=["F5-TTS", "E2-TTS"], label="Choose TTS Model", value="F5-TTS")
     generate_btn = gr.Button("Synthesize", variant="primary")
     with gr.Accordion("Advanced Settings", open=False):
