@@ -153,7 +153,7 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
             )
     
         generated = generated[:, ref_audio_len:, :]
-        generated_mel_specs.append(rearrange(generated, '1 n d -> 1 d n'))
+        generated_mel_spec = rearrange(generated, '1 n d -> 1 d n')
         gr.Info("Running vocoder")
         vocos = Vocos.from_pretrained("charactr/vocos-mel-24khz")
         generated_wave = vocos.decode(generated_mel_spec.cpu())
