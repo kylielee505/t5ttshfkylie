@@ -21,7 +21,7 @@ import spaces
 import librosa
 from txtsplit import txtsplit
 
-device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() "cpu"
+device = "cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu"
 
 pipe = pipeline(
     "automatic-speech-recognition",
