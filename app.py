@@ -110,7 +110,9 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence):
     else:
         gr.Info("Using custom reference text...")
     audio, sr = torchaudio.load(ref_audio)
-
+    # Audio
+    if audio.shape[0] > 1:
+        audio = torch.mean(audio, dim=0, keepdim=True)
     rms = torch.sqrt(torch.mean(torch.square(audio)))
     if rms < target_rms:
         audio = audio * target_rms / rms
