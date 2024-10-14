@@ -209,7 +209,7 @@ def split_text_into_batches(text, max_chars=200, split_words=SPLIT_WORDS):
         batches.append(current_batch)
     
     return batches
-
+@spaces.GPU
 def infer_batch(ref_audio, ref_text, gen_text_batches, exp_name, remove_silence, progress=gr.Progress()):
     if exp_name == "F5-TTS":
         ema_model = F5TTS_ema_model
