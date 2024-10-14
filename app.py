@@ -151,6 +151,7 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
         # else:
         zh_pause_punc = r"。，、；：？！"
         ref_text_len = len(ref_text.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, ref_text))
+        gen_text_len = len(gen_text.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, gen_text))
         chunk = len(chunk.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, gen_text))
         duration = ref_audio_len + int(ref_audio_len / ref_text_len * gen_text_len / speed)
     
