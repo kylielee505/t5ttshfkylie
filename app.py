@@ -8,7 +8,7 @@ import tempfile
 from einops import rearrange
 from ema_pytorch import EMA
 from vocos import Vocos
-from pydub import AudioSegment
+from pydub import AudioSegment, silence
 from model import CFM, UNetT, DiT, MMDiT
 from cached_path import cached_path
 from model.utils import (
@@ -19,6 +19,7 @@ from model.utils import (
 from transformers import pipeline
 import spaces
 import librosa
+import soundfile as sf
 from txtsplit import txtsplit
 from detoxify import Detoxify
 
@@ -49,8 +50,8 @@ speed = 1.0
 # fix_duration = 27  # None or float (duration in seconds)
 fix_duration = None
 
-def load_model(exp_name, model_cls, model_cfg, ckpt_step):
-    checkpoint = torch.load(str(cached_path(f"hf://SWivid/F5-TTS/{exp_name}/model_{ckpt_step}.pt")), map_location=device)
+def load_model(repo_name, exp_name, model_cls, model_cfg, ckpt_step):
+    checkpoint = torch.load(str(cached_path(f"hf://SWivid/{repo_name}/{exp_name}/model_{ckpt_step}.pt")), map_location=device)
     vocab_char_map, vocab_size = get_tokenizer("Emilia_ZH_EN", "pinyin")
     model = CFM(
         transformer=model_cls(
@@ -73,14 +74,14 @@ def load_model(exp_name, model_cls, model_cfg, ckpt_step):
     ema_model.load_state_dict(checkpoint['ema_model_state_dict'])
     ema_model.copy_params_from_ema_to_model()
 
-    return ema_model, model
+    return model
 
 # load models
 F5TTS_model_cfg = dict(dim=1024, depth=22, heads=16, ff_mult=2, text_dim=512, conv_layers=4)
 E2TTS_model_cfg = dict(dim=1024, depth=24, heads=16, ff_mult=4)
 
-F5TTS_ema_model, F5TTS_base_model = load_model("F5TTS_Base", DiT, F5TTS_model_cfg, 1200000)
-E2TTS_ema_model, E2TTS_base_model = load_model("E2TTS_Base", UNetT, E2TTS_model_cfg, 1200000)
+F5TTS_ema_model = load_model("F5-TTS", "F5TTS_Base", DiT, F5TTS_model_cfg, 1200000)
+E2TTS_ema_model = load_model("E2-TTS", "E2TTS_Base", UNetT, E2TTS_model_cfg, 1200000)
 
 @spaces.GPU
 def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress = gr.Progress()):
@@ -91,6 +92,12 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
     gr.Info("Converting audio...")
     with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
         aseg = AudioSegment.from_file(ref_audio_orig)
+        # remove long silence in reference audio
+        non_silent_segs = silence.split_on_silence(aseg, min_silence_len=1000, silence_thresh=-50, keep_silence=500)
+        non_silent_wave = AudioSegment.silent(duration=0)
+        for non_silent_seg in non_silent_segs:
+            non_silent_wave += non_silent_seg
+        aseg = non_silent_wave
         # Convert to mono
         aseg = aseg.set_channels(1)
         audio_duration = len(aseg)
@@ -101,10 +108,8 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
         ref_audio = f.name
     if exp_name == "F5-TTS":
         ema_model = F5TTS_ema_model
-        base_model = F5TTS_base_model
     elif exp_name == "E2-TTS":
         ema_model = E2TTS_ema_model
-        base_model = E2TTS_base_model
     
     if not ref_text.strip():
         gr.Info("No reference text provided, transcribing reference audio...")
@@ -119,6 +124,7 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
     else:
         gr.Info("Using custom reference text...")
     audio, sr = torchaudio.load(ref_audio)
+    max_chars = int(len(ref_text) / (audio.shape[-1] / sr) * (30 - audio.shape[-1] / sr))
     # Audio
     if audio.shape[0] > 1:
         audio = torch.mean(audio, dim=0, keepdim=True)
@@ -130,7 +136,7 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
         audio = resampler(audio)
     audio = audio.to(device)
     # Chunk
-    chunks = txtsplit(gen_text, 100, 150) # 100 chars preferred, 150 max
+    chunks = txtsplit(gen_text, 0.7*max_chars, 0.9*max_chars)
     results = []
     generated_mel_specs = []
     for chunk in progress.tqdm(chunks):
@@ -144,14 +150,14 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
         #     duration = int(fix_duration * target_sample_rate / hop_length)
         # else:
         zh_pause_punc = r"。，、；：？！"
-        ref_text_len = len(ref_text) + len(re.findall(zh_pause_punc, ref_text))
-        gen_text_len = len(gen_text) + len(re.findall(zh_pause_punc, gen_text))
+        ref_text_len = len(ref_text.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, ref_text))
+        chunk = len(chunk.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, gen_text))
         duration = ref_audio_len + int(ref_audio_len / ref_text_len * gen_text_len / speed)
     
         # inference
         gr.Info(f"Generating audio using {exp_name}")
         with torch.inference_mode():
-            generated, _ = base_model.sample(
+            generated, _ = ema_model.sample(
                 cond=audio,
                 text=final_text_list,
                 duration=duration,
@@ -174,12 +180,23 @@ def infer(ref_audio_orig, ref_text, gen_text, exp_name, remove_silence, progress
     generated_wave = np.concatenate(results)
     if remove_silence:
         gr.Info("Removing audio silences... This may take a moment")
-        non_silent_intervals = librosa.effects.split(generated_wave, top_db=30)
-        non_silent_wave = np.array([])
-        for interval in non_silent_intervals:
-            start, end = interval
-            non_silent_wave = np.concatenate([non_silent_wave, generated_wave[start:end]])
-        generated_wave = non_silent_wave
+        # non_silent_intervals = librosa.effects.split(generated_wave, top_db=30)
+        # non_silent_wave = np.array([])
+        # for interval in non_silent_intervals:
+        #     start, end = interval
+        #     non_silent_wave = np.concatenate([non_silent_wave, generated_wave[start:end]])
+        # generated_wave = non_silent_wave
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".wav") as f:
+            sf.write(f.name, generated_wave, target_sample_rate)
+            aseg = AudioSegment.from_file(f.name)
+            non_silent_segs = silence.split_on_silence(aseg, min_silence_len=1000, silence_thresh=-50, keep_silence=500)
+            non_silent_wave = AudioSegment.silent(duration=0)
+            for non_silent_seg in non_silent_segs:
+                non_silent_wave += non_silent_seg
+            aseg = non_silent_wave
+            aseg.export(f.name, format="wav")
+            generated_wave, _ = torchaudio.load(f.name)
+        generated_wave = generated_wave.squeeze().cpu().numpy()
 
 
     # spectogram
