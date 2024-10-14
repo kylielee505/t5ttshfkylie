@@ -138,19 +138,24 @@ class Trainer:
         if "model_last.pt" in os.listdir(self.checkpoint_path):
             latest_checkpoint = "model_last.pt"
         else:
-            latest_checkpoint = sorted(os.listdir(self.checkpoint_path), key=lambda x: int(''.join(filter(str.isdigit, x))))[-1]
+            latest_checkpoint = sorted([f for f in os.listdir(self.checkpoint_path) if f.endswith('.pt')], key=lambda x: int(''.join(filter(str.isdigit, x))))[-1]
         # checkpoint = torch.load(f"{self.checkpoint_path}/{latest_checkpoint}", map_location=self.accelerator.device)  # rather use accelerator.load_state ಥ_ಥ
         checkpoint = torch.load(f"{self.checkpoint_path}/{latest_checkpoint}", map_location="cpu")
-        self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint['model_state_dict'])
-        self.accelerator.unwrap_model(self.optimizer).load_state_dict(checkpoint['optimizer_state_dict'])
 
         if self.is_main:
             self.ema_model.load_state_dict(checkpoint['ema_model_state_dict'])
 
-        if self.scheduler:
-            self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
-        
-        step = checkpoint['step']
+        if 'step' in checkpoint:
+            self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint['model_state_dict'])
+            self.accelerator.unwrap_model(self.optimizer).load_state_dict(checkpoint['optimizer_state_dict'])
+            if self.scheduler:
+                self.scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+            step = checkpoint['step']
+        else:
+            checkpoint['model_state_dict'] = {k.replace("ema_model.", ""): v for k, v in checkpoint['ema_model_state_dict'].items() if k not in ["initted", "step"]}
+            self.accelerator.unwrap_model(self.model).load_state_dict(checkpoint['model_state_dict'])
+            step = 0
+
         del checkpoint; gc.collect()
         return step
 
@@ -163,16 +168,16 @@ class Trainer:
             generator = None
 
         if self.batch_size_type == "sample":
-            train_dataloader = DataLoader(train_dataset, collate_fn=collate_fn, num_workers=num_workers, pin_memory=True, 
+            train_dataloader = DataLoader(train_dataset, collate_fn=collate_fn, num_workers=num_workers, pin_memory=True, persistent_workers=True,
                                           batch_size=self.batch_size, shuffle=True, generator=generator)
         elif self.batch_size_type == "frame":
             self.accelerator.even_batches = False
             sampler = SequentialSampler(train_dataset)
             batch_sampler = DynamicBatchSampler(sampler, self.batch_size, max_samples=self.max_samples, random_seed=resumable_with_seed, drop_last=False)
-            train_dataloader = DataLoader(train_dataset, collate_fn=collate_fn, num_workers=num_workers, pin_memory=True,
+            train_dataloader = DataLoader(train_dataset, collate_fn=collate_fn, num_workers=num_workers, pin_memory=True, persistent_workers=True,
                                           batch_sampler=batch_sampler)
         else:
-            raise ValueError(f"batch_size_type must be either 'sample' or 'frame', but recieved {self.batch_size_type}")
+            raise ValueError(f"batch_size_type must be either 'sample' or 'frame', but received {self.batch_size_type}")
         
         #  accelerator.prepare() dispatches batches to devices;
         #  which means the length of dataloader calculated before, should consider the number of devices

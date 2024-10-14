@@ -134,7 +134,7 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
                 - if use "byte", set to 256 (unicode byte range) 
     ''' 
     if tokenizer in ["pinyin", "char"]:
-        with open (f"data/{dataset_name}_{tokenizer}/vocab.txt", "r") as f:
+        with open (f"data/{dataset_name}_{tokenizer}/vocab.txt", "r", encoding="utf-8") as f:
             vocab_char_map = {}
             for i, char in enumerate(f):
                 vocab_char_map[char[:-1]] = i
@@ -153,9 +153,11 @@ def get_tokenizer(dataset_name, tokenizer: str = "pinyin"):
 def convert_char_to_pinyin(text_list, polyphone = True):
     final_text_list = []
     god_knows_why_en_testset_contains_zh_quote = str.maketrans({'“': '"', '”': '"', '‘': "'", '’': "'"})  # in case librispeech (orig no-pc) test-clean
+    custom_trans = str.maketrans({';': ','})  # add custom trans here, to address oov
     for text in text_list:
         char_list = []
         text = text.translate(god_knows_why_en_testset_contains_zh_quote)
+        text = text.translate(custom_trans)
         for seg in jieba.cut(text):
             seg_byte_len = len(bytes(seg, 'UTF-8'))
             if seg_byte_len == len(seg):  # if pure alphabets and symbols
@@ -273,6 +275,8 @@ def get_inference_prompt(
             ref_audio = resampler(ref_audio)
 
         # Text
+        if len(prompt_text[-1].encode('utf-8')) == 1:
+            prompt_text = prompt_text + " "
         text = [prompt_text + gt_text]
         if tokenizer == "pinyin":
             text_list = convert_char_to_pinyin(text, polyphone = polyphone)
@@ -292,8 +296,8 @@ def get_inference_prompt(
             # ref_audio = gt_audio
         else:
             zh_pause_punc = r"。，、；：？！"
-            ref_text_len = len(prompt_text) + len(re.findall(zh_pause_punc, prompt_text))
-            gen_text_len = len(gt_text) + len(re.findall(zh_pause_punc, gt_text))
+            ref_text_len = len(prompt_text.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, prompt_text))
+            gen_text_len = len(gt_text.encode('utf-8')) + 3 * len(re.findall(zh_pause_punc, gt_text))
             total_mel_len = ref_mel_len + int(ref_mel_len / ref_text_len * gen_text_len / speed)
 
         # to mel spectrogram
@@ -543,3 +547,28 @@ def repetition_found(text, length = 2, tolerance = 10):
         if count > tolerance:
             return True
     return False
+
+
+# load model checkpoint for inference
+
+def load_checkpoint(model, ckpt_path, device, use_ema = True):
+    from ema_pytorch import EMA
+
+    ckpt_type = ckpt_path.split(".")[-1]
+    if ckpt_type == "safetensors":
+        from safetensors.torch import load_file
+        checkpoint = load_file(ckpt_path, device=device)
+    else:
+        checkpoint = torch.load(ckpt_path, map_location=device)
+
+    if use_ema == True:
+        ema_model = EMA(model, include_online_model = False).to(device)
+        if ckpt_type == "safetensors":
+            ema_model.load_state_dict(checkpoint)
+        else:
+            ema_model.load_state_dict(checkpoint['ema_model_state_dict'])
+        ema_model.copy_params_from_ema_to_model()
+    else:
+        model.load_state_dict(checkpoint['model_state_dict'])
+        
+    return model

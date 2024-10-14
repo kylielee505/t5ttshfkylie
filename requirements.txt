@@ -1,17 +1,24 @@
 accelerate>=0.33.0
+cached_path
+click
 datasets
 einops>=0.8.0
 einx>=0.3.0
 ema_pytorch>=0.5.2
 faster_whisper
 funasr
+gradio
 jieba
 jiwer
 librosa
 matplotlib
+numpy==1.23.5
+pydub
 pypinyin
-torch>=2.0
-torchaudio>=2.3.0
+safetensors
+soundfile
+# torch>=2.0
+# torchaudio>=2.3.0
 torchdiffeq
 tqdm>=4.65.0
 transformers
@@ -20,8 +27,3 @@ wandb
 x_transformers>=1.31.14
 zhconv
 zhon
-cached_path
-pydub
-txtsplit
-detoxify
-soundfile
