@@ -788,4 +788,4 @@ def main(port, host, share, api):
 
 
 if __name__ == "__main__":
-    main()
+    app.queue().launch()
