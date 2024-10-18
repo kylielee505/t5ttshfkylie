@@ -768,6 +768,24 @@ If you're having issues, try converting your reference audio to WAV or MP3, clip
     )
     gr.TabbedInterface([app_tts, app_podcast, app_emotional, app_credits], ["TTS", "Podcast", "Multi-Style", "Credits"])
 
+@click.command()
+@click.option("--port", "-p", default=None, type=int, help="Port to run the app on")
+@click.option("--host", "-H", default=None, help="Host to run the app on")
+@click.option(
+    "--share",
+    "-s",
+    default=False,
+    is_flag=True,
+    help="Share the app via Gradio share link",
+)
+@click.option("--api", "-a", default=True, is_flag=True, help="Allow API access")
+def main(port, host, share, api):
+    global app
+    print(f"Starting app...")
+    app.queue(api_open=api).launch(
+        server_name=host, server_port=port, share=share, show_api=api
+    )
 
 
-app.queue().launch()
+if __name__ == "__main__":
+    main()
