@@ -812,4 +812,4 @@ if __name__ == "__main__":
     if not USING_SPACES:
         main()
     else:
-        app.queue().launch()
+        app.queue().launch(share=True)
